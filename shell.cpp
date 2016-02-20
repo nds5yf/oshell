@@ -16,7 +16,15 @@
 
 using namespace std;
 
-int runCommand(vector<string> command_token_group) {
+
+#define ARRAY_SIZE(array) (sizeof((array))/sizeof(array[0]))
+
+
+int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int pipe_counter) {
+  vector<string> command_token_group = the_token_groups[0];
+  the_token_groups.erase(the_token_groups.begin());
+
+
   string outfile_string, infile_string; //used for storing the name of the output file if one exists
   bool output_redirect = false;
   bool input_redirect = false;
@@ -85,11 +93,38 @@ int runCommand(vector<string> command_token_group) {
       dup2(infile, 0);
     }
 
+    //do recursion
+    if(the_token_groups.size() > 0) {
+      if(pipe_counter == 0) {
+        dup2(pipe_ends[pipe_counter + 1], 1);
+      } else if (pipe_counter == ARRAY_SIZE(pipe_ends)) {
+        dup2(pipe_ends[pipe_counter - 2], 0);
+      } else {
+        dup2(pipe_ends[pipe_counter - 2], 0);
+        dup2(pipe_ends[pipe_counter + 1], 1);
+      }
+
+      for (int k = 0; k < ARRAY_SIZE(pipe_ends); k++) {
+        close(pipe_ends[k]);
+      }
+    
+
+      runCommand(the_token_groups, pipe_ends, pipe_counter + 2);
+
+    }
+
     execvp(command_args[0], command_args);
     cout << "ERROR: Unknown command" << endl;
 
   } else {
+
+    for (int k = 0; k < ARRAY_SIZE(pipe_ends); k++) {
+        close(pipe_ends[k]);
+    }
+
     wait(&status);
+
+
 
     if(output_redirect)
       close(outfile);
@@ -170,7 +205,13 @@ int main() {
 
 
         //Start running commands
-        runCommand(token_groups[0]);
+        int pipes[(token_groups.size() - 1)*2];
+        for(int k = 0; k < ARRAY_SIZE(pipes); k+=2) {
+          pipe(pipes + k);
+        }
+
+        runCommand(token_groups, pipes, 0);
+
 
       }
   }
