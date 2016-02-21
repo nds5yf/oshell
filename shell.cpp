@@ -21,9 +21,11 @@ using namespace std;
 
 
 int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int pipe_counter) {
-  vector<string> command_token_group = the_token_groups[0];
-  the_token_groups.erase(the_token_groups.begin());
-
+  //cout << "help" << endl;
+ // vector<string> command_token_group = the_token_groups[0];
+ // the_token_groups.erase(the_token_groups.begin());
+  vector<string> command_token_group = the_token_groups[the_token_groups.size() - 1];
+  the_token_groups.pop_back();
 
   string outfile_string, infile_string; //used for storing the name of the output file if one exists
   bool output_redirect = false;
@@ -93,24 +95,30 @@ int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int p
       dup2(infile, 0);
     }
 
-    //do recursion
-    if(the_token_groups.size() > 0) {
+    if(ARRAY_SIZE(pipe_ends) > 0) {
       if(pipe_counter == 0) {
-        dup2(pipe_ends[pipe_counter + 1], 1);
+        cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;
+        dup2(pipe_ends[1], 1);
+        cout << "token groups size: " << the_token_groups.size() << endl;
       } else if (pipe_counter == ARRAY_SIZE(pipe_ends)) {
+cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;        
         dup2(pipe_ends[pipe_counter - 2], 0);
+        cout << "token groups size: " << the_token_groups.size() << endl;
       } else {
+cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;        
         dup2(pipe_ends[pipe_counter - 2], 0);
         dup2(pipe_ends[pipe_counter + 1], 1);
+        cout << "token groups size: " << the_token_groups.size() << endl;
       }
 
       for (int k = 0; k < ARRAY_SIZE(pipe_ends); k++) {
         close(pipe_ends[k]);
       }
-    
+    }
+    //do recursion
 
-      runCommand(the_token_groups, pipe_ends, pipe_counter + 2);
-
+    if(the_token_groups.size() > 0) {
+      runCommand(the_token_groups, pipe_ends, pipe_counter - 2);
     }
 
     execvp(command_args[0], command_args);
@@ -118,8 +126,10 @@ int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int p
 
   } else {
 
-    for (int k = 0; k < ARRAY_SIZE(pipe_ends); k++) {
+    if(ARRAY_SIZE(pipe_ends) > 0) {
+      for (int k = 0; k < ARRAY_SIZE(pipe_ends); k++) {
         close(pipe_ends[k]);
+      }
     }
 
     wait(&status);
@@ -210,7 +220,9 @@ int main() {
           pipe(pipes + k);
         }
 
-        runCommand(token_groups, pipes, 0);
+    //    cout << ARRAY_SIZE(pipes) << endl;
+
+        runCommand(token_groups, pipes, ARRAY_SIZE(pipes));
 
 
       }
