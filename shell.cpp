@@ -21,8 +21,7 @@ using namespace std;
 
 
 int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int pipe_counter, int pipe_indx) {
-//  cout << "pipe size " << ARRAY_SIZE(pipe_ends) << endl;
-//  vector<string> command_token_group = the_token_groups[0];
+
 //  the_token_groups.erase(the_token_groups.begin());
  vector<string> command_token_group = the_token_groups[the_token_groups.size() - 1];
  the_token_groups.pop_back();
@@ -102,55 +101,38 @@ int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int p
        
 
       if(pipe_counter == 0) {
-      // cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;
+
         dup2(pipe_ends[pipe_counter + 1], 1);
 
-     //   cout << command_args[0] << pipe_ends[pipe_counter + 1] << " " << 1 << endl;
-      //  close (pipe_ends[1]);
        
       } else if (pipe_counter == pipe_indx) {
-//cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;        
 
         dup2(pipe_ends[pipe_counter - 2], 0);
 
-    //    cout << command_args[0] << pipe_ends[pipe_counter - 2] << " " << 0 << endl;
 
         
       } else {
-//cout << "command at counter " << pipe_counter << " " << command_token_group[0] << endl;        
         dup2(pipe_ends[pipe_counter - 2], 0);
         dup2(pipe_ends[pipe_counter + 1], 1);
-
-       
       }
-
-   //   cout << pipe_counter << endl;
-
-     // for (int k = 0; k < pipe_indx; k++) {
-   //    cout << "closing " << k << endl;
-      //  close(pipe_ends[k]);
-    //  }
     }
+
     //do recursion
       if(the_token_groups.size() > 0) {
         runCommand(the_token_groups, pipe_ends, pipe_counter - 2, pipe_indx);
       }
 
     
- //   cout << "command counter " << pipe_counter << " executes" << endl;
     execvp(command_args[0], command_args);
     cout << "ERROR: Unknown command" << endl;
 
   } else {
 
- //   if(ARRAY_SIZE(pipe_ends) > 0) {
       for (int k = 0; k < pipe_indx; k++) {
         close(pipe_ends[k]);
       }
-  //  }
 
     wait(&status);
-
 
 
     if(output_redirect)
@@ -162,7 +144,27 @@ int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int p
   }
 }
 
+//Bank of valid characters
+char bank[65] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '-', '_'};
 
+bool validIn(string x){
+  bool valid;
+  for(int i = 0; i < x.length(); i++){ //For each character in string
+    valid = false;
+    for(int j = 0; j < 65; j++){  // For each character in bank
+      if(x[i] == bank[j]){  //If char matches, break and move to next
+        valid = true;
+        break;
+      }
+    }
+    if(valid == false){ //char not found in bank, break and return false
+      break;
+    }
+  }
+  return valid;
+}
 
 
 int main() {
@@ -182,7 +184,10 @@ int main() {
       if(input_command.length() > 80) { //check if line is too long
 	
 	     cout << "ERROR: Command exceeds maximum character length of 80 characters." << endl;
-      
+
+      } else if (!validIn(input_command)) { //check if characters are valid
+        cout << "ERROR: Command contains an invalid character. Valid characters: A-Z, a-z, 0-9, ., -, _" << endl;
+
       } else if (input_command == "exit") { //exit the shell
 
 	     break;
@@ -221,37 +226,16 @@ int main() {
         }
         token_groups.push_back(temp);
 
-        /*
-        for(int k = 0; k < token_groups.size(); k++){
-          for(int l = 0; l < token_groups[k].size(); l++) {
-            cout << token_groups[k][l] << " ";
-          }
-          cout << endl;
-        }
-        */
-
-
         //Start running commands
         int pipes[(token_groups.size() - 1)*2];
 
-   //     cout << "these two should match: " << (token_groups.size() - 1)*2 << " & " << ARRAY_SIZE(pipes) << endl;
 
         for(int k = 0; k < ARRAY_SIZE(pipes); k+=2) {
           pipe(pipes + k);
         }
 
-      //  for(int l = 0; l < ARRAY_SIZE(pipes); l++) {
-       //   cout << pipes[l] << endl;
-       // }
-
-    //    cout << ARRAY_SIZE(pipes) << endl;
-
         runCommand(token_groups, pipes, ARRAY_SIZE(pipes), ARRAY_SIZE(pipes));
-
 
       }
   }
-  
-
- 
 }
