@@ -17,7 +17,17 @@
 using namespace std;
 
 
-#define ARRAY_SIZE(array) (sizeof((array))/sizeof(array[0]))
+#define ARRAY_SIZE(array) (sizeof((array))/sizeof(array[0])) 
+
+string errors[8] = {"\'|\' is not a valid member of a word.", 
+                    "\'|\' not separating two valid tokens.",
+                    "\'>\' cannot be followed by \'|\'",
+                    "\'>\' cannot be followed by another \'>\'",
+                    "\'<\' cannot be followed by another \'<\'",
+                    "\'>\' cannot be followed by \'<\'",
+                    "Two redirection operators cannot be next to each other",
+                    "A valid word must preced the \'>\' operator"};
+
 
 
 int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int pipe_counter, int pipe_indx) {
@@ -144,16 +154,16 @@ int runCommand(vector< vector<string> > the_token_groups, int pipe_ends[], int p
   }
 }
 
-//Bank of valid characters
-char bank[65] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+//Bank of valid characters 
+char bank[69] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
         'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '-', '_'};
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '-', '_', '<', '>', ' ', '|'};
 
 bool validIn(string x){
   bool valid;
   for(int i = 0; i < x.length(); i++){ //For each character in string
     valid = false;
-    for(int j = 0; j < 65; j++){  // For each character in bank
+    for(int j = 0; j < 69; j++){  // For each character in bank
       if(x[i] == bank[j]){  //If char matches, break and move to next
         valid = true;
         break;
@@ -202,40 +212,109 @@ int main() {
          tokens.push_back(token);
         }
 
-        int last_group_indx = 0;
-        //isolate the token groups of the command
-        for(int i = 0; i < tokens.size(); i++) {
+        //indicates a parsing error has been found
+        int error_indx = -1;
 
-          if(tokens[i] == "|") {
-            vector<string> temp;
+        
+        //check for more parsing errors
+        for(int ii = 0; ii < tokens.size(); ii++) {
 
-            for(int j = last_group_indx; j < i; j++) {
-              temp.push_back(tokens[j]);
+          //pipe operator not separating valid words
+          if((tokens[ii] == "|") && (ii == tokens.size() - 1 )) {
+            error_indx = 1;
+          } 
+
+          if(tokens[ii] == "<<" || tokens[ii] == ">>") {
+            error_indx = 6;
+          }
+
+          if(tokens[ii] == ">" && ii == 0) {
+            error_indx = 7;
+          }
+
+          //check for correct order or redirection operators
+          if(tokens[ii] == ">" || tokens[ii] == "<") {
+            for(int kk = ii + 1; kk < tokens.size(); kk++) {
+              if(tokens[ii] == ">")  {
+
+                 if(tokens[kk] == "|")
+                    error_indx = 2;
+                 else if(tokens[kk] == ">")
+                    error_indx = 3;
+                 else if (tokens[kk] == "<")
+                    error_indx = 5;
+              
+              } else if (tokens[ii] == "<") {
+
+                if(tokens[kk] == "<") {
+                  error_indx = 4;
+                }
+
+              }
             }
-            token_groups.push_back(temp);
+          }
 
-            last_group_indx = i + 1;
+          for(int jj = 0; jj < tokens[ii].length(); jj++) {
+            string tok = tokens[ii];
+           // pipe operator part of a word
+            if(tok[jj] == '|' && tok.length() > 1) {
+              
+              error_indx = 0;
+
+            }
 
           }
         }
+        
 
-        //add the last token
-        vector<string> temp;
-        for(int j = last_group_indx; j < tokens.size(); j++) {
-            temp.push_back(tokens[j]);
+        if(error_indx > -1) {
+
+          cout << "ERROR: " << errors[error_indx] << endl;
+
+
+        } else {
+
+
+
+          int last_group_indx = 0;
+          //isolate the token groups of the command
+          for(int i = 0; i < tokens.size(); i++) {
+
+            if(tokens[i] == "|") {
+              vector<string> temp;
+
+              for(int j = last_group_indx; j < i; j++) {
+                temp.push_back(tokens[j]);
+              }
+              token_groups.push_back(temp);
+
+              last_group_indx = i + 1;
+
+            }
+          }
+
+          //add the last token
+          vector<string> temp;
+          for(int j = last_group_indx; j < tokens.size(); j++) {
+              temp.push_back(tokens[j]);
+          }
+          token_groups.push_back(temp);
+
+
+
+
+
+          //Start running commands
+          int pipes[(token_groups.size() - 1)*2];
+
+
+          for(int k = 0; k < ARRAY_SIZE(pipes); k+=2) {
+            pipe(pipes + k);
+          }
+
+          runCommand(token_groups, pipes, ARRAY_SIZE(pipes), ARRAY_SIZE(pipes));
+
         }
-        token_groups.push_back(temp);
-
-        //Start running commands
-        int pipes[(token_groups.size() - 1)*2];
-
-
-        for(int k = 0; k < ARRAY_SIZE(pipes); k+=2) {
-          pipe(pipes + k);
-        }
-
-        runCommand(token_groups, pipes, ARRAY_SIZE(pipes), ARRAY_SIZE(pipes));
-
       }
   }
 }
